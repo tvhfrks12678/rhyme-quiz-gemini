@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { QuizResponse, SubmitAnswerResponse } from "../../contracts/quiz";
+import { getNextQuizFn, submitAnswerFn } from "../../application/services/quizFns";
 
 interface QuizState {
   currentIndex: number;
@@ -56,9 +57,9 @@ export function useQuizQuery(currentIndex: number) {
   return useQuery<QuizResponse>({
     queryKey: ["quiz", currentIndex],
     queryFn: async () => {
-      const res = await fetch(`/api/quiz/next?currentIndex=${currentIndex}`);
-      if (!res.ok) throw new Error("Failed to fetch quiz");
-      return res.json();
+      const quiz = await getNextQuizFn({ data: currentIndex });
+      if (!quiz) throw new Error("Quiz not found");
+      return quiz;
     },
     enabled: true,
   });
@@ -67,13 +68,9 @@ export function useQuizQuery(currentIndex: number) {
 export function useSubmitMutation() {
   return useMutation<SubmitAnswerResponse, Error, { id: string; selectedChoiceIds: string[] }>({
     mutationFn: async ({ id, selectedChoiceIds }) => {
-      const res = await fetch(`/api/quiz/${id}/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedChoiceIds }),
-      });
-      if (!res.ok) throw new Error("Failed to submit answer");
-      return res.json();
+      const result = await submitAnswerFn({ data: { id, selectedChoiceIds } });
+      if (!result) throw new Error("Failed to submit answer");
+      return result;
     },
   });
 }
